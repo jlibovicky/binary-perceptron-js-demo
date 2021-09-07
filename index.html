@@ -1,0 +1,432 @@
+
+<html>
+<head>
+<title>jQuery Hello World</title>
+
+    <script type="text/javascript" src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script type="text/javascript" src="images.js"></script>
+
+<style>
+
+@font-face {
+    font-family: "digital";
+    src: url("DSEG14Classic-Regular.ttf") format('woff');
+}
+
+body {
+    font-family: Arial, sans-serif;
+    font-size: 32px;
+}
+
+#status {
+    font-size: 32px;
+    font-weight: bold;
+    text-align: center;
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+
+#accuracyBox {
+    border: 3px solid black;
+    margin-left: 30px;
+    padding: 5px;
+}
+
+#experimentBox {
+    display: flex;
+    text-align: center;
+    display: flex;
+    align-items: center;
+}
+
+#clockface {
+    margin-top: 20px
+}
+
+.number {border: 3px solid white; width: 32px; height: 32px }
+
+.correct {border: 3px solid green}
+.false {border: 3px solid red}
+
+.pixel {width: 120px; height: 120px; border: 1px white solid; text-align: center}
+.slider {width: 120px}
+.sliderWeight {color: red; font-family: "digital"}
+
+#pixelTable{  background-repeat: no-repeat; background-size: 700px 700px;}
+
+</style>
+
+<script type="text/javascript">
+
+function randn_bm() {
+    var u = 0, v = 0;
+    while(u === 0) u = Math.random(); //Converting [0,1) to (0,1)
+    while(v === 0) v = Math.random();
+    return Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v );
+}
+
+var weights = Array();
+for (var i = 0; i < 25; i++) {
+    //weights.push(Math.min(1, Math.max(-1, randn_bm())));
+    weights.push(0.0);
+}
+var pixel_cells = Array();
+var data_points = Array();
+
+function update_classifications() {
+    var correct_count = 0;
+    var total_count = 0;
+    for (const img_record of image_data) {
+        total_count += 1;
+        var score = 0;
+        for (var j = 0; j < 25; j++) {
+            score += weights[j] * img_record.data[j];
+        }
+        var is_correct = Math.sign(score) == img_record.class;
+        correct_count += is_correct;
+        if (is_correct) {
+           img_record.page_element.removeClass("false");
+           img_record.page_element.addClass("correct");
+        } else {
+           img_record.page_element.removeClass("correct");
+           img_record.page_element.addClass("false");
+        }
+    }
+    var accuracy = correct_count / total_count;
+    $("#goodCount").text(correct_count);
+    $("#badCount").text(total_count - correct_count);
+
+    $("#goodRect").attr("width", 200 * accuracy);
+    $("#badRect").attr("width", 200 * (1 - accuracy));
+    $("#badRect").attr("x", 200 * accuracy);
+
+    $("#accuracy").text(Math.round(100 * accuracy) + "%");
+
+    show_datapoint(current_example);
+}
+
+function sigmoid(t) {
+    return 1/(1+Math.pow(Math.E, -t));
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+var cuurent_example = 0;
+var current_angle = 0;
+
+async function show_datapoint(index) {
+    current_example = index;
+    const img_record = image_data[index];
+    $("#pixelTable").css({"background-image": "url('images/" + img_record.file + "')"});
+    var score = 0;
+    for (var j = 0; j < 25; j++) {
+        score += weights[j] * img_record.data[j];
+    }
+    const prob = sigmoid(score);
+    const angle = (prob - 0.5) * 200;
+
+    if (angle > current_angle) {
+        for (var i = current_angle; i < angle; i++) {
+            $("#arrow").attr("transform", "rotate(" + i + ", 119.90882,33.783518)");
+            await sleep(8);
+        }
+    } else {
+        for (var i = current_angle; i > angle; i--) {
+            $("#arrow").attr("transform", "rotate(" + i + ", 119.90882,33.783518)");
+            await sleep(8);
+        }
+
+    }
+    current_angle = angle;
+}
+
+
+$(document).ready(function(){
+    pixel_cells.push($("#pixel1_1"));
+    pixel_cells.push($("#pixel1_2"));
+    pixel_cells.push($("#pixel1_3"));
+    pixel_cells.push($("#pixel1_4"));
+    pixel_cells.push($("#pixel1_5"));
+    pixel_cells.push($("#pixel2_1"));
+    pixel_cells.push($("#pixel2_2"));
+    pixel_cells.push($("#pixel2_3"));
+    pixel_cells.push($("#pixel2_4"));
+    pixel_cells.push($("#pixel2_5"));
+    pixel_cells.push($("#pixel3_1"));
+    pixel_cells.push($("#pixel3_2"));
+    pixel_cells.push($("#pixel3_3"));
+    pixel_cells.push($("#pixel3_4"));
+    pixel_cells.push($("#pixel3_5"));
+    pixel_cells.push($("#pixel4_1"));
+    pixel_cells.push($("#pixel4_2"));
+    pixel_cells.push($("#pixel4_3"));
+    pixel_cells.push($("#pixel4_4"));
+    pixel_cells.push($("#pixel4_5"));
+    pixel_cells.push($("#pixel5_1"));
+    pixel_cells.push($("#pixel5_2"));
+    pixel_cells.push($("#pixel5_3"));
+    pixel_cells.push($("#pixel5_4"));
+    pixel_cells.push($("#pixel5_5"));
+
+    for (var i = 0; i < pixel_cells.length; i++) {
+        var pixel = pixel_cells[i];
+        var weight = weights[i];
+        var weight_label = $('<span id="w' + i +'" class="sliderWeight">0.00</span>');
+        weight_label.appendTo(pixel)
+        var slider = $('<input type="range" min="0" max="200" value="100" class="slider" index="' + i + '">');
+        weight_label.text(weights[i].toFixed(2));
+        slider.val(weights[i] * 100 + 100);
+        slider.appendTo(pixel);
+        slider.change(function() {
+            var slideToW = ($(this).val() - 100) / 100
+            $(this).prev().text(slideToW.toFixed(2));
+            weights[$(this).attr("index")] = slideToW;
+            update_classifications();
+        });
+
+        //slider.change
+    }
+
+    image_data.sort(() => Math.random() - 0.5);
+
+    for (var i = 0; i < image_data.length; i++) {
+        const img_record = image_data[i];
+        var img = $('<img />', {
+            src: "images/" + img_record.file,
+            class: "number",
+        });
+        img.attr("index", i);
+        img_record["page_element"] = img;
+
+        img.appendTo("#images");
+        img.click(function() {
+            show_datapoint($(this).attr('index'));
+        });
+    }
+
+    update_classifications();
+
+});
+
+</script>
+</head>
+
+<body>
+
+<div>Trénovací data</div>
+
+<div id="images">
+</div>
+
+<div id="status">
+    Dobře <span id="goodCount">0</span>
+    <svg width="200" height="40">
+       <rect id="goodRect" width="140" height="40" style="fill:green" />
+       <rect id="badRect" x="140" width="60" height="40" style="fill:red" />
+    </svg>
+    Špatně <span id="badCount">0</span>
+
+    <span id="accuracyBox">Úspěšnost <span id="accuracy" />%</span>
+</div>
+
+<div id="experimentBox">
+<table id="pixelTable">
+    <tr>
+        <td id="pixel1_1" class="pixel">&nbsp;</td>
+        <td id="pixel1_2" class="pixel">&nbsp;</td>
+        <td id="pixel1_3" class="pixel">&nbsp;</td>
+        <td id="pixel1_4" class="pixel">&nbsp;</td>
+        <td id="pixel1_5" class="pixel">&nbsp;</td>
+    </tr>
+
+    <tr>
+        <td id="pixel2_1" class="pixel">&nbsp;</td>
+        <td id="pixel2_2" class="pixel">&nbsp;</td>
+        <td id="pixel2_3" class="pixel">&nbsp;</td>
+        <td id="pixel2_4" class="pixel">&nbsp;</td>
+        <td id="pixel2_5" class="pixel">&nbsp;</td>
+    </tr>
+
+    <tr>
+        <td id="pixel3_1" class="pixel">&nbsp;</td>
+        <td id="pixel3_2" class="pixel">&nbsp;</td>
+        <td id="pixel3_3" class="pixel">&nbsp;</td>
+        <td id="pixel3_4" class="pixel">&nbsp;</td>
+        <td id="pixel3_5" class="pixel">&nbsp;</td>
+    </tr>
+
+    <tr>
+        <td id="pixel4_1" class="pixel">&nbsp;</td>
+        <td id="pixel4_2" class="pixel">&nbsp;</td>
+        <td id="pixel4_3" class="pixel">&nbsp;</td>
+        <td id="pixel4_4" class="pixel">&nbsp;</td>
+        <td id="pixel4_5" class="pixel">&nbsp;</td>
+    </tr>
+
+    <tr>
+        <td id="pixel5_1" class="pixel">&nbsp;</td>
+        <td id="pixel5_2" class="pixel">&nbsp;</td>
+        <td id="pixel5_3" class="pixel">&nbsp;</td>
+        <td id="pixel5_4" class="pixel">&nbsp;</td>
+        <td id="pixel5_5" class="pixel">&nbsp;</td>
+    </tr>
+
+</table>
+
+<div>
+
+
+Špatně
+<svg height="80" width="80">
+  <circle cx="40" cy="40" r="30" stroke="black" stroke-width="5" fill="red" />
+</svg>
+
+<svg height="80" width="80">
+  <circle cx="40" cy="40" r="30" stroke="black" stroke-width="5" fill="green" />
+</svg>
+Dobře
+
+<br />
+
+<svg id="clockface"
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   id="svg8"
+   version="1.1"
+   viewBox="-0.3 0 166.14392 82.262092"
+   height="82.262093mm"
+   width="166.14392mm">
+  <defs
+     id="defs2">
+    <marker
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="marker10187"
+       style="overflow:visible">
+      <path
+         id="path10185"
+         d="m -2.5,-1 c 0,2.76 -2.24,5 -5,5 -2.76,0 -5,-2.24 -5,-5 0,-2.76 2.24,-5 5,-5 2.76,0 5,2.24 5,5 z"
+         style="fill:#d40000;fill-opacity:1;fill-rule:evenodd;stroke:#d40000;stroke-width:1.00000003pt;stroke-opacity:1"
+         transform="matrix(0.2,0,0,0.2,1.48,0.2)"
+         inkscape:connector-curvature="0" />
+    </marker>
+    <marker
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="marker10135"
+       style="overflow:visible">
+      <path
+         id="path10133"
+         d="M 0,0 5,-5 -12.5,0 5,5 Z"
+         style="fill:#d40000;fill-opacity:1;fill-rule:evenodd;stroke:#d40000;stroke-width:1.00000003pt;stroke-opacity:1"
+         transform="matrix(-0.2,0,0,-0.2,-1.2,0)"
+         inkscape:connector-curvature="0" />
+    </marker>
+    <marker
+       style="overflow:visible"
+       id="Arrow2Mend"
+       refX="0"
+       refY="0"
+       orient="auto">
+      <path
+         transform="scale(-0.6)"
+         d="M 8.7185878,4.0337352 -2.2072895,0.01601326 8.7185884,-4.0017078 c -1.7454984,2.3720609 -1.7354408,5.6174519 -6e-7,8.035443 z"
+         style="fill:#d40000;fill-opacity:1;fill-rule:evenodd;stroke:#d40000;stroke-width:0.625;stroke-linejoin:round;stroke-opacity:1"
+         id="path854"
+         inkscape:connector-curvature="0" />
+    </marker>
+    <marker
+       style="overflow:visible"
+       id="Arrow1Mend"
+       refX="0"
+       refY="0"
+       orient="auto">
+      <path
+         transform="matrix(-0.4,0,0,-0.4,-4,0)"
+         style="fill:#ec1b3b;fill-opacity:1;fill-rule:evenodd;stroke:#ec1b3b;stroke-width:1.00000003pt;stroke-opacity:1"
+         d="M 0,0 5,-5 -12.5,0 5,5 Z"
+         id="path836"
+         inkscape:connector-curvature="0" />
+    </marker>
+  </defs>
+  <metadata
+     id="metadata5">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <path
+     inkscape:connector-curvature="0"
+     style="opacity:1;fill:#e6e6e6;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:3.31599998;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+     id="path815"
+     d="m 88.875578,42.098849 a 32.127975,32.127975 0 0 1 12.605392,-34.6330281 32.127975,32.127975 0 0 1 36.8557,0 32.127975,32.127975 0 0 1 12.60539,34.6330291 l -31.03324,-8.315332 z" />
+  <path
+     style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1.13770831;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+     d="M 119.90882,33.783518 C 119.11321,40.434413 79.373318,76.273454 79.080438,64.888806 78.421102,39.259508 94.46185,57.921455 89.426828,57.160691 77.719061,55.391714 61.470523,66.427982 51.833046,67.828201 36.167069,70.104295 60.620497,87.972571 57.566966,79.365894 45.665218,45.819644 29.640096,77.082088 11.816794,71.652187"
+     id="path901"
+     inkscape:connector-curvature="0"
+     sodipodi:nodetypes="cssssc" />
+  <text
+     xml:space="preserve"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:20.07434464px;line-height:125%;font-family:Arial;-inkscape-font-specification:Arial;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1.88196969px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     x="76.256783"
+     y="35.716793"
+     id="text819"><tspan
+       id="tspan817"
+       x="76.256783"
+       y="35.716793"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Arial;-inkscape-font-specification:Arial;stroke-width:1.88196969px">0</tspan></text>
+  <text
+     id="text823"
+     y="35.716793"
+     x="163.94725"
+     style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:20.07434464px;line-height:125%;font-family:Arial;-inkscape-font-specification:Arial;text-align:center;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1.88196969px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     xml:space="preserve"><tspan
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Arial;-inkscape-font-specification:Arial;stroke-width:1.88196969px"
+       y="35.716793"
+       x="163.94725"
+       id="tspan821">1</tspan></text>
+  <path
+     inkscape:connector-curvature="0"
+     style="fill:#d40000;fill-rule:evenodd;stroke:#d40000;stroke-width:2.06500006;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-start:url(#marker10187);marker-end:url(#marker10135)"
+     d="M 119.90882,33.783518 V 5.0142529"
+     id="arrow" />
+  <g
+     id="g909"
+     transform="matrix(0.58647423,0,0,0.58647423,57.63746,48.635531)">
+    <rect
+       ry="7.8581252"
+       y="31.640024"
+       x="-98.220581"
+       height="15.216435"
+       width="24.620708"
+       id="rect903"
+       style="opacity:1;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:1.13770843;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+    <rect
+       style="opacity:1;fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.85858566;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+       id="rect905"
+       width="13.769291"
+       height="15.495558"
+       x="-98.360146"
+       y="31.500463"
+       ry="0" />
+  </g>
+</svg>
+</div>
+</div>
+
+</body>
+</html>
